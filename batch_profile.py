@@ -9,10 +9,13 @@ import pandas as pd
 
 GPU_ID = 2
 ALGO = 'wino'  # gemm/7, igemm/6, ipgemm/5, fft/4, fftt/3, wino/2
-MODE = 'energy'
+MODE = 'latency'
 
 if MODE == 'energy':
     CONFIG_PATH = os.path.join('search_space', 'regnet_convs_unique.csv')
+    LOG_FOLDER = os.path.join('logs', MODE)
+elif MODE == 'latency':
+    CONFIG_PATH = os.path.join('search_space', 'regnet_convs_expand.csv')
     LOG_FOLDER = os.path.join('logs', MODE)
 else:
     raise ValueError(f'mode not supported: {MODE}')
@@ -49,6 +52,19 @@ def profile_energy(config):
     return json.loads(stdout)
 
 
+def profile_latency(config):
+    config['gpu_id'] = GPU_ID
+    config['sample_num'] = 100
+    config['gpu_sampler'] = 0
+    python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
+    python_cmd = f'python onnx_conv.py {python_args}'
+    stdout, stderr = run_cmd(python_cmd)
+    if len(stderr) > 0:
+        print(stderr)
+        return None
+    return json.loads(stdout)
+
+
 # ncu_args = f'--set full --page=details --csv --print-summary per-kernel'
 # ncu_cmd = f'ncu {ncu_args} {python_cmd} > {LOG_FOLDER}/{str(i).zfill(4)}.csv'
 
@@ -60,6 +76,7 @@ if __name__ == '__main__':
         print(f'#{i}: {config}')
         results = {
             'energy': profile_energy,
+            'latency': profile_latency,
         }[MODE](config)
         if results is None:
             continue
