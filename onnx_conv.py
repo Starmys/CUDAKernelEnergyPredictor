@@ -16,7 +16,8 @@ RANDOM_SEED = 2022
 
 def test_op(config):
     gpu_id = config.pop('gpu_id')
-    sample_num = config.pop('sample_num')
+    num_iters = config.pop('num_iters')
+    num_warmups = config.pop('num_warmups')
     use_gpu_sampler = config.pop('gpu_sampler') > 0
 
     hw = config.pop('hw')
@@ -26,7 +27,7 @@ def test_op(config):
     conv_module = torch.nn.Conv2d(**config, padding=padding)
     torch.onnx.export(conv_module, input, f'tmp/conv_{gpu_id}.onnx')
 
-    ort_sess = ort.InferenceSession(f'tmp/conv_{gpu_id}.onnx', providers=[
+    providers = [
         ('CUDAExecutionProvider', {
             'device_id': gpu_id,
             'arena_extend_strategy': 'kNextPowerOfTwo',
@@ -35,33 +36,39 @@ def test_op(config):
             'do_copy_in_default_stream': True,
         }),
         'CPUExecutionProvider',
-    ])
+    ]
+    ort_sess_warm = ort.InferenceSession(f'tmp/conv_{gpu_id}.onnx', providers=providers)
+    for _ in range(num_warmups):
+        output = ort_sess_warm.run(None, {'input': input.numpy()})
 
-    def call_func():
-        outputs = ort_sess.run(None, {'input': input.numpy()})
-
-    call_func()
-
+    options = ort.SessionOptions()
+    # options.enable_profiling = True
+    ort_sess_iter = ort.InferenceSession(f'tmp/conv_{gpu_id}.onnx', options, providers=providers)
     if use_gpu_sampler:
         x = GPUSampler(gpu_id=gpu_id)
         x.start()
     start = time.time()
-    for _ in range(sample_num):
-        call_func()
+    for _ in range(num_iters):
+        output = ort_sess_iter.run(None, {'input': input.numpy()})
     total_time = time.time() - start
     if use_gpu_sampler:
         x.terminate()
+    # prof_file = ort_sess_iter.end_profiling()
+    # print(prof_file)
 
     results = {}
-    results['latency'] = total_time / sample_num
+    results['latency'] = total_time / num_iters
 
     if use_gpu_sampler:
         total_energy = x.calculate_energy()
-        results['energy'] = total_energy / sample_num
+        results['energy'] = total_energy / num_iters
         gpu_readings = x.export_readings()
         results['temperature'] = np.mean(gpu_readings['temperature'])
         results['memory'] = np.mean(gpu_readings['used_memory'])
         results['util'] = np.mean(gpu_readings['gpu_util'])
+        clocks = set(gpu_readings['clocks'])
+        if len(clocks) > 1:
+            print(f'Multiple frequency values occured: {clocks}')
 
     return results
 

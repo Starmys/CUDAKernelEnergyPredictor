@@ -37,6 +37,7 @@ class GPUSampler(threading.Thread):
         self.mem_util_readings = [] # memory util readings at sampling time, % of time
         self.gpu_util_readings = [] # gpu util readings at sampling time, % of time
         self.time_stamps = [] # time stamp of each reading wrt starting time, s
+        self.clocks = [] # gpu frequency at sampling time, MHz
     
     def __del__(self):
         pynvml.nvmlShutdown()
@@ -48,6 +49,7 @@ class GPUSampler(threading.Thread):
             # start timer
             begin_time = time.perf_counter()
             # read from nvml
+            clock = pynvml.nvmlDeviceGetClock(self.handle, 1, 0)
             meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
             power_mw = pynvml.nvmlDeviceGetPowerUsage(self.handle)
             temperature = pynvml.nvmlDeviceGetTemperature(self.handle, pynvml.NVML_TEMPERATURE_GPU)
@@ -59,6 +61,7 @@ class GPUSampler(threading.Thread):
             self.temperature_readings.append(temperature)
             self.mem_util_readings.append(util.memory)
             self.gpu_util_readings.append(util.gpu)
+            self.clocks.append(clock)
             self.time_stamps.append(time.perf_counter() - start_t)
             self.count += 1
             # end timer
@@ -83,6 +86,7 @@ class GPUSampler(threading.Thread):
             'temperature' : self.temperature_readings,
             'memory_util' : self.mem_util_readings,
             'gpu_util' : self.gpu_util_readings,
+            'clocks': self.clocks,
             'time_stamp' : self.time_stamps,
             'sampling_interval' : self.sampling_interval,
         }

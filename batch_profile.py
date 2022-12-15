@@ -7,8 +7,8 @@ import subprocess
 import pandas as pd
 
 
-GPU_ID = 2
-ALGO = 'wino'  # gemm/7, igemm/6, ipgemm/5, fft/4, fftt/3, wino/2
+GPU_ID = 7
+ALGO = 'gemm'  # gemm/7, igemm/6, ipgemm/5, fft/4, fftt/3, wino/2
 MODE = 'latency'
 
 if MODE == 'energy':
