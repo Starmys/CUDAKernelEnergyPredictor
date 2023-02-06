@@ -7,13 +7,23 @@ import subprocess
 import pandas as pd
 
 
-GPU_ID = 2
-ALGO = 'wino'  # gemm/7, igemm/6, ipgemm/5, fft/4, fftt/3, wino/2
+GPU_ID = 4  # 4 5 6 7 7
+ALGO = 0  # 0 1 2 4 6
+ALGO_ENUM = [
+    'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM',
+    'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM',
+    'CUDNN_CONVOLUTION_FWD_ALGO_GEMM',
+    'CUDNN_CONVOLUTION_FWD_ALGO_DIRECT',
+    'CUDNN_CONVOLUTION_FWD_ALGO_FFT',
+    'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING',
+    'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD',
+    'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED',
+]
 MODE = 'energy'
 
 if MODE == 'energy':
-    # CONFIG_PATH = os.path.join('search_space', 'regnet_convs_unique.csv')
-    CONFIG_PATH = os.path.join('search_space', 'regnet_convs_expand.csv')
+    CONFIG_PATH = os.path.join('search_space', 'regnet_convs_unique.csv')
+    # CONFIG_PATH = os.path.join('search_space', 'regnet_convs_expand.csv')
 elif MODE == 'latency':
     CONFIG_PATH = os.path.join('search_space', 'regnet_convs_expand.csv')
 elif MODE == 'ncu':
@@ -32,54 +42,38 @@ FEATURES = ['hw', 'in_channels', 'out_channels', 'kernel_size', 'stride', 'group
 def run_cmd(cmd):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
-    stdout = stdout.decode("utf-8")
-    stderr = stderr.decode("utf-8")
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
     return stdout, stderr
 
 
 def profile_energy(config):
-    # prefix_cmd = f'conda activate ort-conv-{ALGO}'
     config['gpu_id'] = GPU_ID
-    config['num_warmups'] = 10
-    config['num_iters'] = 10
-    config['gpu_sampler'] = 0
+    config['algo'] = ALGO
     python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
     python_cmd = f'python onnx_conv.py {python_args}'
     stdout, stderr = run_cmd(python_cmd)
     if len(stderr) > 0:
         print(stderr)
         return None
-    config['num_warmups'] = 200
-    config['num_iters'] = math.ceil(10 / json.loads(stdout)['latency'])
-    config['gpu_sampler'] = 1
-    python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
-    python_cmd = f'python onnx_conv.py {python_args}'
-    stdout, stderr = run_cmd(python_cmd)
-    try:
-        return json.loads(stdout)
-    except:
-        return None
+    return json.loads(stdout.split('\n')[-2])
 
 
 def profile_latency(config):
     config['gpu_id'] = GPU_ID
-    config['num_warmups'] = 200
-    config['num_iters'] = 1000
-    config['gpu_sampler'] = 0
+    config['algo'] = ALGO
     python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
     python_cmd = f'python onnx_conv.py {python_args}'
     stdout, stderr = run_cmd(python_cmd)
     if len(stderr) > 0:
         print(stderr)
         return None
-    return json.loads(stdout)
+    return json.loads(stdout.split('\n')[-2])
 
 
 def profile_ncu(config):
     config['gpu_id'] = GPU_ID
-    config['num_warmups'] = 0
-    config['num_iters'] = 1
-    config['gpu_sampler'] = 0
+    config['algo'] = ALGO
     python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
     python_cmd = f'python onnx_conv.py {python_args}'
     details_folder = os.path.splitext(LOG_PATH)[0]
@@ -98,8 +92,6 @@ def profile_ncu(config):
 if __name__ == '__main__':
     first_record = True
     for i, row in pd.read_csv(CONFIG_PATH).iterrows():
-        if i < 3349:
-            continue
         config = row.to_dict()
         print(f'#{i}: {config}')
         results = {
