@@ -7,8 +7,8 @@ import subprocess
 import pandas as pd
 
 
-GPU_ID = 4  # 4 5 6 7 7
-ALGO = 0  # 0 1 2 4 6
+GPU_ID = 4  # 4 5 6 7 3
+ALGO = 1    # 0 1 2 4 6
 ALGO_ENUM = [
     'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM',
     'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM',
@@ -20,18 +20,20 @@ ALGO_ENUM = [
     'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED',
 ]
 MODE = 'energy'
+ONNX_PROFILER = True
+PROFILER_PATH = os.path.join(os.path.dirname(__file__), 'onnx_conv.py')
 
 if MODE == 'energy':
-    CONFIG_PATH = os.path.join('search_space', 'regnet_convs_unique.csv')
-    # CONFIG_PATH = os.path.join('search_space', 'regnet_convs_expand.csv')
+    CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'search_space', 'regnet_convs_unique.csv')
+    # CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'search_space', 'regnet_convs_expand.csv')
 elif MODE == 'latency':
-    CONFIG_PATH = os.path.join('search_space', 'regnet_convs_expand.csv')
+    CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'search_space', 'regnet_convs_expand.csv')
 elif MODE == 'ncu':
-    CONFIG_PATH = os.path.join('search_space', 'regnet_convs_unique.csv')
+    CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'search_space', 'regnet_convs_unique.csv')
 else:
     raise ValueError(f'mode not supported: {MODE}')
 
-LOG_FOLDER = os.path.join('logs', MODE)
+LOG_FOLDER = os.path.join(os.path.dirname(__file__), 'logs', MODE)
 if not os.path.exists(LOG_FOLDER):
     os.makedirs(LOG_FOLDER)
 LOG_PATH = os.path.join(LOG_FOLDER, f'{ALGO}-{datetime.date.today().strftime("%Y%m%d")}.csv')
@@ -50,8 +52,24 @@ def run_cmd(cmd):
 def profile_energy(config):
     config['gpu_id'] = GPU_ID
     config['algo'] = ALGO
+    if ONNX_PROFILER:
+        config['onnx_profiler'] = 1
+    else:
+        config['onnx_profiler'] = 0
+        config['num_warmups'] = 10
+        config['num_iters'] = 10
+        config['profile_energy'] = 0
+        python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
+        python_cmd = f'python {PROFILER_PATH} {python_args}'
+        stdout, stderr = run_cmd(python_cmd)
+        if len(stderr) > 0:
+            print(stderr)
+            return None
+        config['num_iters'] = math.ceil(10 / json.loads(stdout.split('\n')[-2])['latency'])
+    config['num_warmups'] = 200
+    config['profile_energy'] = 1
     python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
-    python_cmd = f'python onnx_conv.py {python_args}'
+    python_cmd = f'python {PROFILER_PATH} {python_args}'
     stdout, stderr = run_cmd(python_cmd)
     if len(stderr) > 0:
         print(stderr)
@@ -62,8 +80,15 @@ def profile_energy(config):
 def profile_latency(config):
     config['gpu_id'] = GPU_ID
     config['algo'] = ALGO
+    if ONNX_PROFILER:
+        config['onnx_profiler'] = 1
+    else:
+        config['onnx_profiler'] = 0
+        config['num_iters'] = 1000
+    config['profile_energy'] = 0
+    config['num_warmups'] = 200
     python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
-    python_cmd = f'python onnx_conv.py {python_args}'
+    python_cmd = f'python {PROFILER_PATH} {python_args}'
     stdout, stderr = run_cmd(python_cmd)
     if len(stderr) > 0:
         print(stderr)
@@ -75,7 +100,7 @@ def profile_ncu(config):
     config['gpu_id'] = GPU_ID
     config['algo'] = ALGO
     python_args = ' '.join([f'--{k}={v}' for k, v in config.items()])
-    python_cmd = f'python onnx_conv.py {python_args}'
+    python_cmd = f'python {PROFILER_PATH} {python_args}'
     details_folder = os.path.splitext(LOG_PATH)[0]
     if not os.path.exists(details_folder):
         os.makedirs(details_folder)
