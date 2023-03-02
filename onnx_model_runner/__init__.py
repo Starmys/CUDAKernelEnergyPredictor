@@ -47,4 +47,4 @@ class OnnxModelRunner(object):
             save_path = os.path.join(self._workspace, name, f'{base_name}.{suffix}')
             setattr(cfg, f'{name}_save_path', save_path)
         res = runner.run_onnx_model(model_path, cfg, algo_preset_path)
-        return {'latency': res[0], 'energy': res[1]}
+        return {'latency': res[0], 'energy': res[1], 'power': res[1] / res[0]}

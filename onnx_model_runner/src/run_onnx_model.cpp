@@ -60,7 +60,7 @@ std::vector<double> run_onnx_model(
         memset(&o, 0, sizeof(o));
         // But is zero a valid value for every variable? Not quite. It is not guaranteed. In the other words: does every enum
         // type contain zero? The following line can be omitted because EXHAUSTIVE is mapped to zero in onnxruntime_c_api.h.
-        o.device_id = 0;
+        o.device_id = cfg.gpu_id;
         o.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchPreset;
         o.algo_preset_file = const_cast<char*>(algoPresetPath.c_str());
         o.gpu_mem_limit = SIZE_MAX;

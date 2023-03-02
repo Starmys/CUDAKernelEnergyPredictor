@@ -341,7 +341,7 @@ double GPUInspector::GetDurationInSec()
     return timer_.getElapsedTimeInSec();
 }
 
-GPUInspector::GPUInspector(bool auto_init)
+GPUInspector::GPUInspector()
 {
     nvmlInit();
 
@@ -350,11 +350,6 @@ GPUInspector::GPUInspector(bool auto_init)
     loop_repeat_ = 100000;
     sampling_interval_micro_second_ = 0.05 * 1000000;
     pthread_inspect_ = nullptr;
-
-    if(auto_init)
-    {
-        Init(0, 0.01);
-    }
 }
 
 GPUInspector::~GPUInspector()
