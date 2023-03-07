@@ -139,6 +139,12 @@ std::vector<double> run_onnx_model(
         api->CreateTensorAsOrtValue(allocator, dim_values, n_dims, element_type, &ort_output_values[i]);
         api->ReleaseTypeInfo(type_info);
     }
+    // try
+    OrtStatus* status = api->Run(session, NULL, input_names, ort_input_values, n_inputs, output_names, n_outputs, ort_output_values);
+    if (status != nullptr) {
+        std::cout << "Error code:" << api->GetErrorCode(status) << std::endl;
+        return {-1.0, -1.0};
+    }
 
     // warming up
     if(cfg.warm_up_repeat)

@@ -181,7 +181,7 @@ bool GPUInspector::Init(int gpu_id, double sampling_interval, bool parallel_read
     // create thread pool
     parallel_reading_ = parallel_reading && (devices_.size() > 1);
     int n_threads = parallel_reading_ ? devices_.size() + 1 : 1;
-    pthread_pool_ = std::unique_ptr<ctpl::thread_pool>(new ctpl::thread_pool(n_threads));
+    pthread_pool_ = std::shared_ptr<ctpl::thread_pool>(new ctpl::thread_pool(n_threads));
     while(pthread_pool_->n_idle() != pthread_pool_->size())
     {
         std::this_thread::sleep_for(std::chrono::nanoseconds(5));

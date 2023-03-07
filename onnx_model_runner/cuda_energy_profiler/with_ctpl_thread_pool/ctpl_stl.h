@@ -129,7 +129,7 @@ namespace ctpl {
         std::function<void(int)> pop() {
             std::function<void(int id)> * _f = nullptr;
             this->q.pop(_f);
-            std::unique_ptr<std::function<void(int id)>> func(_f); // at return, delete the function even if an exception occurred
+            std::shared_ptr<std::function<void(int id)>> func(_f); // at return, delete the function even if an exception occurred
             std::function<void(int)> f;
             if (_f)
                 f = *_f;
@@ -214,7 +214,7 @@ namespace ctpl {
                 bool isPop = this->q.pop(_f);
                 while (true) {
                     while (isPop) {  // if there is anything in the queue
-                        std::unique_ptr<std::function<void(int id)>> func(_f); // at return, delete the function even if an exception occurred
+                        std::shared_ptr<std::function<void(int id)>> func(_f); // at return, delete the function even if an exception occurred
                         (*_f)(i);
                         if (_flag)
                             return;  // the thread is wanted to stop, return even if the queue is not empty yet
@@ -235,7 +235,7 @@ namespace ctpl {
 
         void init() { this->nWaiting = 0; this->isStop = false; this->isDone = false; }
 
-        std::vector<std::unique_ptr<std::thread>> threads;
+        std::vector<std::shared_ptr<std::thread>> threads;
         std::vector<std::shared_ptr<std::atomic<bool>>> flags;
         detail::Queue<std::function<void(int id)> *> q;
         std::atomic<bool> isDone;
