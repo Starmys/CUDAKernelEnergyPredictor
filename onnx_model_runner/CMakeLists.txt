@@ -10,7 +10,8 @@ add_compile_definitions(USE_CUDA)
 add_subdirectory(cuda_energy_profiler)
 
 # set(ONNXRUNTIME_ROOTDIR "/home/t-chengluo/donglinb/Projects/onnxruntime/build/Linux/install")
-set(ONNXRUNTIME_ROOTDIR "/data2/cz/onnxruntime-conv-preset/build/Linux/install")
+# set(ONNXRUNTIME_ROOTDIR "/data2/cz/onnxruntime-conv-preset/build/Linux/install")
+set(ONNXRUNTIME_ROOTDIR "/home/chengzhang/onnxruntime/build/Linux/install")
 include_directories(
     "${ONNXRUNTIME_ROOTDIR}/include"
     "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime/core/session"

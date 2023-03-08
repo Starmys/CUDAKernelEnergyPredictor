@@ -141,7 +141,7 @@ class GPUInspector
   bool parallel_reading_{false};
   unsigned int loop_repeat_{1};
   double sampling_interval_micro_second_{0.05 * 1000000};
-  std::unique_ptr<ctpl::thread_pool> pthread_pool_{nullptr};
+  std::shared_ptr<ctpl::thread_pool> pthread_pool_{nullptr};
 
   // std::vector<nvmlDevice_t> devices_;
   std::unordered_map<int, nvmlDevice_t> devices_;

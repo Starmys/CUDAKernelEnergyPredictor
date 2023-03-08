@@ -45,14 +45,13 @@ def test_op(config):
     with open(algo_preset_path, 'w') as f:
         f.write(f'Conv_0 {algo}')
 
-    results = OnnxModelRunner(workspace).run(
+    return OnnxModelRunner(workspace).run(
         model_path=model_path,
         algo_preset_path=algo_preset_path,
         warmup_repeat=num_warmups,
         num_repeat=num_iters,
         gpu_id=gpu_id,
     )
-    return {'num_warmups': num_warmups, 'num_iters': num_iters, **results}
 
 
 if __name__ == '__main__':
