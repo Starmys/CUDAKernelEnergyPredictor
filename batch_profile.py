@@ -4,6 +4,7 @@ import math
 import datetime
 from typing import Dict, Any
 
+import torch
 import pandas as pd
 
 from onnx_conv import test_op
@@ -22,6 +23,12 @@ ALGO_ENUM = [
 FEATURES = ['hw', 'in_channels', 'out_channels', 'kernel_size', 'stride', 'groups']
 
 
+def _get_device_id():
+    device_name = torch.cuda.get_device_name()
+    device_id = ''.join(device_name.split('-')[0].split(' ')[2:]).lower()
+    return device_id
+
+
 class BatchProfiler(object):
 
     def __init__(self, mode: str = 'energy', gpu_id: int = 0, algo: int = 0):
@@ -34,7 +41,12 @@ class BatchProfiler(object):
             'search_space',
             f'regnet_convs_{config_set}.csv',
         )
-        log_folder = os.path.join(os.path.dirname(__file__), 'logs', mode)
+        log_folder = os.path.join(
+            os.path.dirname(__file__),
+            'logs',
+            _get_device_id(),
+            mode,
+        )
         if not os.path.exists(log_folder):
             os.makedirs(log_folder)
         self._log_path = os.path.join(
